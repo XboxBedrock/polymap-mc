@@ -1,11 +1,16 @@
 package dev.nachwahl.polymap.commands;
 
+import com.fastasyncworldedit.core.math.DelegateBlockVector3;
+import com.fastasyncworldedit.core.math.MutableBlockVector3;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.sk89q.worldedit.*;
 import com.sk89q.worldedit.function.block.Counter;
 import com.sk89q.worldedit.function.operation.Operations;
 import com.sk89q.worldedit.function.visitor.RegionVisitor;
+import com.sk89q.worldedit.math.BlockVector2;
+import com.sk89q.worldedit.math.BlockVector3;
+import com.sk89q.worldedit.math.Vector2;
 import com.sk89q.worldedit.regions.Region;
 import com.sk89q.worldedit.regions.RegionOperationException;
 import dev.nachwahl.polymap.PolyMap;
@@ -20,6 +25,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -33,7 +39,7 @@ public class MapCommand implements CommandExecutor {
     private double lat;
     private double lon;
     private String city;
-    private PolyMap plugin;
+    private final PolyMap plugin;
 
     public MapCommand(PolyMap plugin) {
         this.plugin = plugin;
@@ -41,7 +47,7 @@ public class MapCommand implements CommandExecutor {
 
     @Override
 
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         FileBuilder fb = new FileBuilder("plugins/PolyMap", "config.yml");
         Player p = (Player) sender;
 
@@ -64,7 +70,7 @@ public class MapCommand implements CommandExecutor {
             p.sendMessage(fb.getString("prefix") + "  §cPlease select a region via WorldEdit first.");
             return false;
         }
-        List<BlockVector2D> poly = null;
+        List<BlockVector2> poly = null;
         try {
              poly = region.polygonize(50);
         } catch (IllegalArgumentException e) {
@@ -76,7 +82,7 @@ public class MapCommand implements CommandExecutor {
 
 
         String coords = "[";
-        for (BlockVector2D vector2D : poly) {
+        for (BlockVector2 vector2D : poly) {
             System.out.println(toGeo(vector2D.getBlockX(), vector2D.getBlockZ())[1] + ", " + toGeo(vector2D.getBlockX(), vector2D.getBlockZ())[0]);
             this.lat = toGeo(vector2D.getBlockX(), vector2D.getBlockZ())[1];
             this.lon = toGeo(vector2D.getBlockX(), vector2D.getBlockZ())[0];
@@ -118,7 +124,7 @@ public class MapCommand implements CommandExecutor {
         sm.getRegionSelector(WorldEdit.getInstance().getSessionManager().findByName(p.getName()).getSelectionWorld()).clear();
 
         try {
-            region.contract(new Vector().setY(region.getHeight()-1));
+            region.contract(new MutableBlockVector3().mutY(region.getHeight()-1));
         } catch (RegionOperationException e) {
             e.printStackTrace();
         }
@@ -146,7 +152,7 @@ public class MapCommand implements CommandExecutor {
                 throwables.printStackTrace();
             }
             p.sendMessage(fb.getString("prefix") + "  Your region was created successfully and is now visible on the map.");
-            p.sendMessage(fb.getString("prefix") + "  You can see your region by clicking on this link: https://map.bte-germany.de/region/" + reg.getUid());
+            p.sendMessage(fb.getString("prefix") + "  You can see your region by clicking on this link: https://map.buildtheearth.asia/region/" + reg.getUid());
         });
 
 
@@ -154,13 +160,13 @@ public class MapCommand implements CommandExecutor {
         return false;
 
     }
-    public String stringify(List<BlockVector2D> l) {
-        String rs = "";
-        for (BlockVector2D vector2D : l) {
-            rs = rs + ',' + vector2D.toString();
+    public String stringify(List<BlockVector2> l) {
+        StringBuilder rs = new StringBuilder();
+        for (BlockVector2 vector2D : l) {
+            rs.append(',').append(vector2D.toString());
         }
         rs.substring(1);
-        return rs;
+        return rs.toString();
     }
     private static final GeographicProjection projection = new ModifiedAirocean();
     private static final GeographicProjection uprightProj = GeographicProjection.orientProjection(projection, GeographicProjection.Orientation.upright);
