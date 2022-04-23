@@ -13,7 +13,7 @@ public class Region {
     private String city;
     private int area;
 
-    public Region(String username, UUID useruuid, String data, String city, int area) {
+    public Region(String username, UUID useruuid, String data, String city,  int area) {
         this.uid = UUID.randomUUID();
         this.objectID = this.uid.toString();
         this.createdDate = new Date();

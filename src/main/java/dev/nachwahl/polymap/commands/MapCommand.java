@@ -32,13 +32,19 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 
 public class MapCommand implements CommandExecutor {
     private double lat;
     private double lon;
     private String city;
+    private int count = 1;
+    private String georegion = "N/A";
+    private String subregion = "N/A";
+    private String type = "N/A";
     private final PolyMap plugin;
 
     public MapCommand(PolyMap plugin) {
@@ -50,6 +56,12 @@ public class MapCommand implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         FileBuilder fb = new FileBuilder("plugins/PolyMap", "config.yml");
         Player p = (Player) sender;
+
+        String[] trueArgs = String.join(" ", args).split("\\|");
+        System.out.println(Arrays.toString(trueArgs));
+        Arrays.parallelSetAll(trueArgs, (i) -> trueArgs[i].trim());
+
+        System.out.println(Arrays.toString(trueArgs));
 
         if(!p.hasPermission("polymap.map")) {
             p.sendMessage(fb.getString("prefix") + " §cYou don't have the permission to execute this command.");
@@ -96,7 +108,7 @@ public class MapCommand implements CommandExecutor {
 
 
         try {
-            url = new URL("https://nominatim.openstreetmap.org/reverse.php?osm_type=N&format=json&zoom=18&lon=" + this.lon + "&accept-language=de&lat=" + this.lat);
+            url = new URL("https://nominatim.openstreetmap.org/reverse.php?osm_type=N&format=json&zoom=18&lon=" + this.lon + "&accept-language=en&lat=" + this.lat);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("accept", "application/json");
             Reader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
@@ -115,11 +127,52 @@ public class MapCommand implements CommandExecutor {
             } else {
                 this.city = "n/A";
             }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
+
+            if (trueArgs.length >= 1) {
+                try {
+                    count = Integer.parseInt(trueArgs[trueArgs.length - 1]);
+
+                } catch (NumberFormatException e) {
+                    p.sendMessage(fb.getString("prefix") + " Invalid Argument for count");
+                    return true;
+                }
+            }
+
+            if (trueArgs.length >= 2) {
+                if (trueArgs.length == 2) {
+                    city = trueArgs[0];
+                }
+                else {
+                    city = trueArgs[1];
+                }
+            }
+
+            if (trueArgs.length >= 3) {
+                georegion = trueArgs[0];
+            }
+
+            if (trueArgs.length == 4) {
+                String possibleType = trueArgs[2].toUpperCase(Locale.ROOT);
+                if (possibleType.equals("F") || possibleType.equals("D") || possibleType.equals("W") || possibleType.equals("L")) {
+                    type = possibleType;
+                }
+                else subregion = trueArgs[2];
+            }
+
+            if (trueArgs.length == 5) {
+                subregion = trueArgs[2];
+                String possibleType = trueArgs[3].toUpperCase(Locale.ROOT);
+                if (possibleType.equals("F") || possibleType.equals("D") || possibleType.equals("W") || possibleType.equals("L")) {
+                    type = possibleType;
+                } else {
+                    p.sendMessage(fb.getString("prefix") + " Invalid Argument for type");
+                    return true;
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
 
         sm.getRegionSelector(WorldEdit.getInstance().getSessionManager().findByName(p.getName()).getSelectionWorld()).clear();
 
@@ -147,7 +200,7 @@ public class MapCommand implements CommandExecutor {
             }*/
 
             try {
-                MySQL.createRegion(reg);
+                MySQL.createRegion(reg, count, georegion, subregion, type);
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
